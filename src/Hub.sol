@@ -41,7 +41,7 @@ contract Hub is TokenSender, TokenReceiver {
             (Action action, address user) = abi.decode(payload, (Action, address));
 
             if(action == Action.DEPOSIT || action == Action.REPAY) {
-                updateHubState(action, user, receivedToken.tokenAddress, receivedToken.amount)) {
+                updateHubState(action, user, receivedToken.tokenAddress, receivedToken.amount);
             }
         }
     }
