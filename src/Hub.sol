@@ -8,63 +8,41 @@ contract Hub is TokenSender, TokenReceiver {
 
     enum Action {DEPOSIT, WITHDRAW, BORROW, REPAY}
 
-    // user => wrapped token address => amount (in units of 10^-8)
+    // user => wrapped token address => amount 
     mapping(address => mapping(address => uint256)) public vaultDeposits;
 
-    // user => wrapped token address => amount (in units of 10^-8)
+    // user => wrapped token address => amount 
     mapping(address => mapping(address => uint256)) public vaultBorrows;
 
     constructor(address _wormholeRelayer, address _tokenBridge, address _wormhole)
         TokenBase(_wormholeRelayer, _tokenBridge, _wormhole)
     {}
 
-    function receiveTokensWithPayloads(
-        ITokenBridge.TransferWithPayload[] memory transfers,
-        bytes32 sourceAddress, 
-        uint16 sourceChain,
-        bytes32 deliveryHash
-    ) internal override onlyWormholeRelayer isRegisteredSender(sourceChain, sourceAddress) replayProtect(deliveryHash) {
-        require(transfers.length == 1, "Expecting one transfer");
-        ITokenBridge.TransferWithPayload memory transfer = transfers[0];
-        
-        (Action action, address user) = abi.decode(transfer.payload, (Action, address));
-        address wrappedTokenAddress = tokenBridge.wrappedAsset(transfer.tokenChain, transfer.tokenAddress);
-
-        bool succeeded = false;
-        if(action == Action.DEPOSIT || action == Action.REPAY) {
-            succeeded = updateHubState(action, user, wrappedTokenAddress, transfer.amount); // amount given with 8 decimals (units of 10^-8)
-        }
-
-        if(!succeeded) {
-            uint8 decimals = getDecimals(wrappedTokenAddress);
-
-            uint256 denormalizedAmount = transfer.amount; // we store all decimals on the hub in normalized form (no more than 8 decimals)
-            if(decimals > 8) denormalizedAmount *= uint256(10) ** (decimals - 8);
-            sendTokenToUser(user, sourceChain, sourceAddress, wrappedTokenAddress, denormalizedAmount);
-        }
-    }
-
-    function receivePayload(
+    function receivePayloadAndTokens(
         bytes memory payload,
+        TokenReceived[] memory receivedTokens,
         bytes32 sourceAddress, 
         uint16 sourceChain,
         bytes32 deliveryHash
     ) internal override onlyWormholeRelayer isRegisteredSender(sourceChain, sourceAddress) replayProtect(deliveryHash) {
-        (Action action, address user, address tokenAddress, uint256 amount) = abi.decode(payload, (Action, address, address, uint256));
-        address wrappedTokenAddress = tokenBridge.wrappedAsset(sourceChain, toWormholeFormat(tokenAddress));
+        if(receivedTokens.length == 0) {
+            (Action action, address user, address tokenHomeAddress, uint256 amount) = abi.decode(payload, (Action, address, address, uint256));
+            
+            address tokenAddressOnThisChain = getTokenAddressOnThisChain(sourceChain, toWormholeFormat(tokenHomeAddress));
 
-        uint8 decimals = getDecimals(wrappedTokenAddress);
+            if(action == Action.BORROW || action == Action.WITHDRAW) {
+                if(updateHubState(action, user, tokenAddressOnThisChain, amount)) {
+                    sendTokenToUser(user, sourceChain, sourceAddress, tokenAddressOnThisChain, amount);
+                }
+            }
+        } else if(receivedTokens.length == 1) {
+            TokenReceived memory receivedToken = receivedTokens[0];
 
-        uint256 normalizedAmount = amount; // we store all decimals on the hub in normalized form (no more than 8 decimals)
-        if(decimals > 8) normalizedAmount /= uint256(10) ** (decimals - 8);
-        
-        bool succeeded = false;
-        if(action == Action.BORROW || action == Action.WITHDRAW) {
-            succeeded = updateHubState(action, user, wrappedTokenAddress, normalizedAmount); 
-        }
+            (Action action, address user) = abi.decode(payload, (Action, address));
 
-        if(succeeded) {
-            sendTokenToUser(user, sourceChain, sourceAddress, wrappedTokenAddress, amount);
+            if(action == Action.DEPOSIT || action == Action.REPAY) {
+                updateHubState(action, user, receivedToken.tokenAddress, receivedToken.amount)) {
+            }
         }
     }
 
@@ -92,10 +70,5 @@ contract Hub is TokenSender, TokenReceiver {
 
     function sendTokenToUser(address user, uint16 sourceChain, bytes32 sourceAddress, address wrappedTokenAddress, uint256 amount) internal {
         forwardTokenWithPayloadToEvm(sourceChain, fromWormholeFormat(sourceAddress), abi.encode(user), 0, GAS_LIMIT, msg.value, wrappedTokenAddress, amount);
-    }
-
-    function getDecimals(address tokenAddress) internal view returns (uint8 decimals) {
-        (, bytes memory queriedDecimals) = tokenAddress.staticcall(abi.encodeWithSignature("decimals()"));
-        decimals = abi.decode(queriedDecimals, (uint8));
     }
 }

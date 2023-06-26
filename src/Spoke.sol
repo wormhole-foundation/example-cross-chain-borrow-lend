@@ -54,29 +54,20 @@ contract Spoke is TokenSender, TokenReceiver {
         sendTokenWithPayloadToEvm(hubChain, hubAddress, abi.encode(Action.REPAY, msg.sender), 0, GAS_LIMIT, msg.value, tokenAddress, amount);
    }
 
-    function receiveTokensWithPayloads(
-        ITokenBridge.TransferWithPayload[] memory transfers,
+    function receivePayloadAndTokens(
+        bytes memory payload,
+        TokenReceived[] memory receivedTokens,
         bytes32 sourceAddress, 
         uint16 sourceChain,
         bytes32 deliveryHash
     ) internal override onlyWormholeRelayer isRegisteredSender(sourceChain, sourceAddress) replayProtect(deliveryHash) {
-        require(transfers.length == 1, "Expecting one transfer");
-        ITokenBridge.TransferWithPayload memory transfer = transfers[0];
+        require(receivedTokens.length == 1, "Expecting one transfer");
+        TokenReceived memory receivedToken = receivedTokens[0];
             
-        (address user) = abi.decode(transfer.payload, (address));
-        address wrappedTokenAddress = transfer.tokenChain == wormhole.chainId() ? fromWormholeFormat(transfer.tokenAddress) : tokenBridge.wrappedAsset(transfer.tokenChain, transfer.tokenAddress);
-
-        uint256 denormalizedAmount = transfer.amount;
-        uint8 decimals = getDecimals(wrappedTokenAddress);
-        if(decimals > 8) denormalizedAmount *= 10 ** (decimals - 8);
-        IERC20(wrappedTokenAddress).transfer(user, denormalizedAmount);
+        (address user) = abi.decode(payload, (address));
+        IERC20(receivedToken.tokenAddress).transfer(user, receivedToken.amount);
 
         // send any refund back to the user
         user.call{value: msg.value}("");
-    }
-
-    function getDecimals(address tokenAddress) internal view returns (uint8 decimals) {
-        (, bytes memory queriedDecimals) = tokenAddress.staticcall(abi.encodeWithSignature("decimals()"));
-        decimals = abi.decode(queriedDecimals, (uint8));
     }
 }

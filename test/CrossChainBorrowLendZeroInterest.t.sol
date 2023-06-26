@@ -117,18 +117,55 @@ contract HelloTokensTest is WormholeRelayerTest {
         deposit(1 * 10**10);
     }
 
-    function testWithdraw() public {
+    function testDepositWithdraw() public {
         // We use multiples of 10**10 because TokenBridge can only send up to 8 decimal places
         deposit(1 * 10**10);
         withdraw(1 * 10**10);
     }
 
-    function testDepositAndWithdraw() public {
+    function testMultipleDepositWithdraw() public {
         deposit(1 * 10**10);
         deposit(2 * 10**10);
         deposit(5 * 10**10);
         deposit(7 * 10**10);
         withdraw(6 * 10**10);
         withdraw(9 * 10**10);
+    }
+
+    function testBorrow() public {
+        // We use multiples of 10**10 because TokenBridge can only send up to 8 decimal places
+        vm.prank(address(0x1));
+        deposit(1 * 10**10);
+
+        borrow(1 * 10**10);
+    }
+
+    function testRepay() public {
+        // We use multiples of 10**10 because TokenBridge can only send up to 8 decimal places
+        vm.prank(address(0x1));
+        deposit(1 * 10**10);
+
+        borrow(1 * 10**10);
+        repay(1 * 10**10);
+    }
+
+    function testMultipleDepositBorrowRepayWithdraw() public {
+        vm.prank(address(0x1));
+        deposit(10 * 10**10);
+
+        borrow(1 * 10**10);
+        borrow(2 * 10**10);
+        repay(1 * 10**10);
+        borrow(7 * 10**10);
+        repay(6 * 10**10);
+        repay(2 * 10**10);
+
+        vm.prank(address(0x1));
+        withdraw(9 * 10**10);
+
+        repay(1 * 10**10);
+
+        vm.prank(address(0x1));
+        withdraw(1 * 10**10);
     }
 }
