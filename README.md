@@ -1,6 +1,8 @@
-# Building Your First Cross-Chain Token Sending and Receiving Application
+# Building A Cross-Chain Borrow Lend Application
 
-This repository contains a solidity contract (HelloTokens.sol) that can be deployed onto many EVM chains to form a fully functioning cross-chain application with the ability to send and receive tokens between blockchains.
+This repository contains solidity contracts (Hub.sol and Spoke.sol) that - if the Hub contract is deployed onto one chain and the Spoke contract is deployed onto many chains - form a fully working cross-chain borrow lending application!
+
+caveat: Demo purposes only - there is no interest rate nor collateralization ratios in this implementation
 
 ## Getting Started
 
@@ -23,17 +25,9 @@ npm run build
 forge test
 ```
 
-Expected output is
-
-```bash
-Running 1 test for test/HelloTokens.t.sol:HelloTokensTest
-[PASS] testRemoteDeposit() (gas: 1338038)
-Test result: ok. 1 passed; 0 failed; finished in 5.64s
-```
-
 ### Deploying to Testnet
 
-You will need a wallet with at least 0.05 Testnet AVAX and 0.01 Testnet CELO. 
+You will need a wallet with some testnet AVAX and testnet CELO. 
 
 - [Obtain testnet AVAX here](https://core.app/tools/testnet-faucet/?token=C)
 - [Obtain testnet CELO here](https://faucet.celo.org/alfajores)
@@ -44,11 +38,11 @@ EVM_PRIVATE_KEY=your_wallet_private_key npm run deploy
 
 ### Testing on Testnet
 
-You will need a wallet with at least 0.02 Testnet AVAX. [Obtain testnet AVAX here](https://core.app/tools/testnet-faucet/?token=C)
+You will need a wallet with some testnet AVAX and testnet CELO - see above section for links to obtain this.
 
 You must have also deployed contracts onto testnet (as described in the above section).
 
-To test sending and receiving a message on testnet, execute the test as such:
+To test the cross chain borrow lending application, execute the test as such:
 
 ```bash
 EVM_PRIVATE_KEY=your_wallet_private_key npm run test
