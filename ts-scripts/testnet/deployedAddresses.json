@@ -6,11 +6,24 @@
     null,
     null,
     null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
     [
-      "0xA4Bc96e1c8126bC4F7e3396a48D2452b6bbF1a77"
-    ]
+      "0xe61b29cf307e67cF6d98b9fB6B584cF8008707cF"
+    ],
+    null
   ],
-  "helloTokens": [
+  "hub": {
+    "address": "0x7D3cB65892f092f031012f24C764252F0134B12D",
+    "chainId": 6
+  },
+  "spokes": [
     null,
     null,
     null,
@@ -25,6 +38,6 @@
     null,
     null,
     null,
-    "0x2768B7BDc5cD3154553021A74534e85Ac6cdc07D"
+    "0x10CE1F56f2D8e365c0391db38f5b75CD520b01A1"
   ]
 }

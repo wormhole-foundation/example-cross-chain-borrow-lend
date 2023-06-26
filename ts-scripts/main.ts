@@ -1,21 +1,21 @@
 import * as ethers from "ethers"
 import {
   checkFlag,
-  getHelloTokens,
+  getHub,
+  getSpoke,
   getWallet,
   loadDeployedAddresses as getDeployedAddresses,
   wait,
+  getArg
 } from "./utils"
 import { ERC20Mock__factory, } from "./ethers-contracts"
 import { deploy } from "./deploy"
 import { deployMockToken } from "./deploy-mock-tokens"
+import { getStatus } from "./getStatus"
+import { ChainName } from "@certusone/wormhole-sdk"
 
 async function main() {
-  if (checkFlag("--sendRemoteDeposit")) {
-    await sendRemoteDeposit()
-    return
-  }
-  if (checkFlag("--deployHelloTokens")) {
+  if (checkFlag("--deployCrossChainBorrowLend")) {
     await deploy()
     return
   }
@@ -23,31 +23,10 @@ async function main() {
     await deployMockToken()
     return
   }
-}
-
-async function sendRemoteDeposit() {
-  // const from = Number(getArg(["--from", "-f"]))
-  // const to = Number(getArg(["--to", "-t"]))
-  // const amount = getArg(["--amount", "-a"])
-
-  const from = 6
-  const to = 14
-  const amount = ethers.utils.parseEther("10")
-
-  const helloToken = getHelloTokens(from)
-  const cost = await helloToken.quoteRemoteDeposit(to)
-  console.log(`cost: ${ethers.utils.formatEther(cost)}`)
-
-  const HT = ERC20Mock__factory.connect(getDeployedAddresses().erc20s[from][0], getWallet(from));
-
-  const rx = await helloToken
-    .sendRemoteDeposit(
-      to,
-      getHelloTokens(to).address,
-      amount,
-      HT.address
-    )
-    .then(wait)
+  if(checkFlag("--getStatus")) {
+    const status = await getStatus(getArg(["--chain", "-c", "--sourceChain"]) as ChainName || "celo", getArg(["--txHash", "--tx", "-t"]) || "");
+    console.log(status.info);
+  }
 }
 
 main().catch(e => {

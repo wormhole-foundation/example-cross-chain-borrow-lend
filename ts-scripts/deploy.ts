@@ -1,5 +1,5 @@
 import { ethers } from "ethers"
-import { HelloTokens__factory, ERC20Mock__factory } from "./ethers-contracts"
+import { ERC20Mock__factory, Hub__factory, Spoke__factory } from "./ethers-contracts"
 import {
   loadConfig,
   getWallet,
@@ -8,27 +8,58 @@ import {
   wait,
   loadDeployedAddresses,
 } from "./utils"
+import {
+  tryNativeToUint8Array
+} from "@certusone/wormhole-sdk"
 
 export async function deploy() {
   const config = loadConfig()
 
-  // fuij and celo
+  // Fuji is hub chain
+  // One spoke: celo
   const deployed = loadDeployedAddresses()
-  for (const chainId of [6, 14]) {
+
+  const hubChain = getChain(6);
+  const hub = await new Hub__factory(getWallet(6)).deploy(
+    hubChain.wormholeRelayer,
+    hubChain.tokenBridge!,
+    hubChain.wormhole
+  );
+  await hub.deployed();
+  deployed.hub = {
+    address: hub.address,
+    chainId: 6
+  }
+  console.log(
+    `Hub deployed to ${hub.address} on chain ${6}`
+  )
+
+  for (const chainId of [14]) {
     const chain = getChain(chainId)
     const signer = getWallet(chainId)
 
-    const helloTokens = await new HelloTokens__factory(signer).deploy(
+    const spoke = await new Spoke__factory(signer).deploy(
+      6,
+      hub.address,
       chain.wormholeRelayer,
       chain.tokenBridge!,
       chain.wormhole
     )
-    await helloTokens.deployed()
+    await spoke.deployed()
 
-    deployed.helloTokens[chainId] = helloTokens.address
+    deployed.spokes[chainId] = spoke.address
     console.log(
-      `HelloToken deployed to ${helloTokens.address} on chain ${chainId}`
+      `Spoke deployed to ${spoke.address} on chain ${chainId}`
     )
+
+    const tx = await hub.setRegisteredSender(chainId, tryNativeToUint8Array(spoke.address, "ethereum")).then(wait);
+
+    console.log(
+      `Spoke ${chainId} registered on hub`
+    )
+
+    const tx2 = await spoke.setRegisteredSender(6, tryNativeToUint8Array(hub.address, "ethereum")).then(wait);
+    console.log(`Hub registered on spoke ${chainId}`)
   }
 
   storeDeployedAddresses(deployed)

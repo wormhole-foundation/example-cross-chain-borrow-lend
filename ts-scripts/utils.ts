@@ -1,7 +1,7 @@
 import { ethers, Wallet } from "ethers"
 import { readFileSync, writeFileSync } from "fs"
 
-import { HelloTokens, HelloTokens__factory } from "./ethers-contracts"
+import { Hub, Spoke, Hub__factory, Spoke__factory } from "./ethers-contracts"
 
 export interface ChainInfo {
   description: string
@@ -16,16 +16,28 @@ export interface Config {
   chains: ChainInfo[]
 }
 export interface DeployedAddresses {
-  helloTokens: Record<number, string>
+  hub: {
+    chainId: number,
+    address: string
+  }
+  spokes: Record<number, string>
   erc20s: Record<number, string[]>
 }
 
-export function getHelloTokens(chainId: number) {
-  const deployed = loadDeployedAddresses().helloTokens[chainId]
-  if (!deployed) {
-    throw new Error(`No deployed hello token on chain ${chainId}`)
+export function getHub() {
+  const hub = loadDeployedAddresses().hub
+  if (!hub?.address) {
+    throw new Error(`No deployed hub`)
   }
-  return HelloTokens__factory.connect(deployed, getWallet(chainId))
+  return Hub__factory.connect(hub.address, getWallet(hub.chainId))
+}
+
+export function getSpoke(chainId: number) {
+  const spoke = loadDeployedAddresses().spokes[chainId]
+  if (!spoke) {
+    throw new Error(`No deployed spoke at chain id ${chainId}`)
+  }
+  return Spoke__factory.connect(spoke, getWallet(chainId))
 }
 
 export function getChain(chainId: number): ChainInfo {
@@ -65,7 +77,11 @@ export function loadDeployedAddresses(): DeployedAddresses {
     if (!deployed) {
       _deployed = {
         erc20s: [],
-        helloTokens: [],
+        hub: {
+          address: "",
+          chainId: 0
+        },
+        spokes: [],
       }
     }
   }

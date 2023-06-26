@@ -21,29 +21,29 @@ import { ChainInfo, getArg } from "./utils"
 
 export async function deployMockToken() {
   const deployed = loadDeployedAddresses()
-  const from = getChain(6)
+  const from = getChain(14)
 
   const signer = getWallet(from.chainId)
-  const HT = await new ERC20Mock__factory(signer).deploy("HelloToken", "HT")
-  await HT.deployed()
-  console.log(`HT deployed to ${HT.address} on chain ${from.chainId}`)
-  deployed.erc20s[6] = [HT.address]
+  const celoToken = await new ERC20Mock__factory(signer).deploy("CeloToken", "Celo")
+  await celoToken.deployed()
+  console.log(`CeloTest Token deployed to ${celoToken.address} on chain ${from.chainId}`)
+  deployed.erc20s[from.chainId] = [celoToken.address]
 
   console.log("Minting...")
-  await HT.mint(signer.address, ethers.utils.parseEther("10")).then(wait)
-  console.log("Minted 10 HT to signer")
+  await celoToken.mint(signer.address, ethers.utils.parseEther("10")).then(wait)
+  console.log("Minted 10 celotest to signer")
 
   console.log(
     `Attesting tokens with token bridge on chain(s) ${loadConfig()
       .chains.map(c => c.chainId)
-      .filter(c => c !== 6)
+      .filter(c => c !== from.chainId)
       .join(", ")}`
   )
   for (const chain of loadConfig().chains) {
     if (chain.chainId === from.chainId) {
       continue
     }
-    await attestWorkflow({ from: getChain(6), to: chain, token: HT.address })
+    await attestWorkflow({ from: getChain(from.chainId), to: chain, token: celoToken.address })
   }
 
   storeDeployedAddresses(deployed)
