@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import {Hub} from "../src/Hub.sol";
 import {Spoke} from "../src/Spoke.sol";
 
-import "wormhole-relayer-solidity-sdk/testing/WormholeRelayerTest.sol";
+import "wormhole-solidity-sdk/testing/WormholeRelayerTest.sol";
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
