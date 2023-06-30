@@ -15,12 +15,12 @@
     null,
     null,
     [
-      "0xe61b29cf307e67cF6d98b9fB6B584cF8008707cF"
+      "0x2bb8968D99fb03560132Ada9eB15DF45032EfA87"
     ],
     null
   ],
   "hub": {
-    "address": "0x7D3cB65892f092f031012f24C764252F0134B12D",
+    "address": "0x2FaFF76774223a28A135D18C63dC805154Fa4D2F",
     "chainId": 6
   },
   "spokes": [
@@ -38,6 +38,6 @@
     null,
     null,
     null,
-    "0x10CE1F56f2D8e365c0391db38f5b75CD520b01A1"
+    "0x38d5808512aE4b1601F9F03bbBdC53e0769F71B9"
   ]
 }

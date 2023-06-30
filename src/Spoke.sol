@@ -21,7 +21,9 @@ contract Spoke is TokenSender, TokenReceiver {
     }
 
     function quoteDeposit() public view returns (uint256 cost) {
-        (cost,) = wormholeRelayer.quoteEVMDeliveryPrice(hubChain, 0, GAS_LIMIT);
+        uint256 deliveryCost;
+        (deliveryCost,) = wormholeRelayer.quoteEVMDeliveryPrice(hubChain, 0, GAS_LIMIT);
+        cost = deliveryCost + wormhole.messageFee();
     }
 
     function quoteBorrow() public view returns (uint256 cost) {
@@ -29,7 +31,9 @@ contract Spoke is TokenSender, TokenReceiver {
     }
 
     function quoteRepay() public view returns (uint256 cost) {
-        (cost,) = wormholeRelayer.quoteEVMDeliveryPrice(hubChain, 0, GAS_LIMIT);
+        uint256 deliveryCost;
+        (deliveryCost,) = wormholeRelayer.quoteEVMDeliveryPrice(hubChain, 0, GAS_LIMIT);
+        cost = deliveryCost + wormhole.messageFee();
     }
 
     function quoteWithdraw() public view returns (uint256 cost) {
@@ -38,7 +42,7 @@ contract Spoke is TokenSender, TokenReceiver {
 
     function deposit(address tokenAddress, uint256 amount) public payable {
         IERC20(tokenAddress).transferFrom(msg.sender, address(this), amount);
-        sendTokenWithPayloadToEvm(hubChain, hubAddress, abi.encode(Action.DEPOSIT, msg.sender), 0, GAS_LIMIT, msg.value, tokenAddress, amount);
+        sendTokenWithPayloadToEvm(hubChain, hubAddress, abi.encode(Action.DEPOSIT, msg.sender), 0, GAS_LIMIT, tokenAddress, amount);
     }
 
     function withdraw(address tokenAddress, uint256 amount) public payable {
@@ -51,7 +55,7 @@ contract Spoke is TokenSender, TokenReceiver {
 
     function repay(address tokenAddress, uint256 amount) public payable {
         IERC20(tokenAddress).transferFrom(msg.sender, address(this), amount);
-        sendTokenWithPayloadToEvm(hubChain, hubAddress, abi.encode(Action.REPAY, msg.sender), 0, GAS_LIMIT, msg.value, tokenAddress, amount);
+        sendTokenWithPayloadToEvm(hubChain, hubAddress, abi.encode(Action.REPAY, msg.sender), 0, GAS_LIMIT, tokenAddress, amount);
    }
 
     function receivePayloadAndTokens(
