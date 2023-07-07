@@ -2,7 +2,7 @@
 
 This repository contains solidity contracts (Hub.sol and Spoke.sol) that - if the Hub contract is deployed onto one chain and the Spoke contract is deployed onto many chains - form a fully working cross-chain borrow lending application!
 
-caveat: Demo purposes only - there is no interest rate nor collateralization ratios in this implementation
+caveat: Demo/example purposes only - there are many many things missing from this implementation that would be crucial for a real borrow lending protocol
 
 ## Getting Started
 
