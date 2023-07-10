@@ -2,8 +2,6 @@
 
 This repository contains solidity contracts (Hub.sol and Spoke.sol) that - if the Hub contract is deployed onto one chain and the Spoke contract is deployed onto many chains - form a fully working cross-chain borrow lending application!
 
-caveat: Demo purposes only - there is no interest rate nor collateralization ratios in this implementation
-
 ## Getting Started
 
 Included in this repository is:
@@ -48,3 +46,4 @@ To test the cross chain borrow lending application, execute the test as such:
 EVM_PRIVATE_KEY=your_wallet_private_key npm run test
 ```
 
+**WARNING**: This repository has not been audited, so it may contain bugs and should be used for example purposes only. If you intend to use or build on this example to perform actual lending, it's highly recommended that you have the final code commit audited by a smart contract auditing firm.
