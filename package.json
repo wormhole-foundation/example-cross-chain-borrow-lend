@@ -1,5 +1,5 @@
 {
-  "name": "cross-chain-borrow-lend",
+  "name": "example-cross-chain-borrow-lend",
   "version": "1.0.0",
   "main": "ts-scripts/main.ts",
   "repository": "git@github.com:wormhole-foundation/cross-chain-borrow-lend.git",
