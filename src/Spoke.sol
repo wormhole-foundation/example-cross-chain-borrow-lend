@@ -5,8 +5,14 @@ import "wormhole-solidity-sdk/WormholeRelayerSDK.sol";
 
 contract Spoke is TokenSender, TokenReceiver {
     uint256 constant GAS_LIMIT = 250_000;
-    uint256 constant GAS_LIMIT_FOR_WITHDRAWS_AND_BORROWS = 1_500_000; // to get your tokens from Hub! A safe upper bound for both actions on Hub chain and back on Spoke chain
-    // Requires Hub to be the cheapest chain gas-wise
+
+    // This value is larger so that it can fund both actions on Hub chain and the return of the tokens back on this Spoke chain
+    // Relys on the price of '1,500,000 units of Hub chain gas' being enough (depending on the delivery provider's pricing on the hub chain)
+    // to fund GAS_LIMIT units of gas on this source chain 
+    // 
+    // A recommended alternate way of implementing this is
+    // to have this be a parameter in 'borrow' and 'withdraw' that is determined in the front-end 
+    uint256 constant GAS_LIMIT_FOR_WITHDRAWS_AND_BORROWS = 1_500_000; 
 
     enum Action {DEPOSIT, WITHDRAW, BORROW, REPAY}
 
