@@ -33,11 +33,32 @@ contract HelloTokensTest is WormholeRelayerTest {
             address(tokenBridgeTarget),
             address(wormholeTarget)
         );
-        spoke.setRegisteredSender(sourceChain, toWormholeFormat(address(hub)));
+    
+        performRegistrations();        
+    }
 
+    function performRegistrations() public {
+        vm.selectFork(targetFork);
         bytes32 spokeAddress = toWormholeFormat(address(spoke));
         vm.selectFork(sourceFork);
+        bytes32 hubAddress = toWormholeFormat(address(hub));
+
+        vm.selectFork(targetFork);
+        spoke.setRegisteredSender(sourceChain, hubAddress);
+        vm.selectFork(sourceFork);
         hub.setRegisteredSender(targetChain, spokeAddress);
+    }
+
+    function calculateReceiverValueForBorrowWithdrawInFrontEnd() public returns (uint256 receiverValueForBorrowWithdraw) {
+        // Front-end calculation for how much receiver value is needed to pay for the return delivery 
+        // for a borrow or withdraw
+        // to ensure a borrow or withdraw is able to return with tokens!
+        uint256 fork = vm.activeFork();
+        vm.selectFork(sourceFork);
+        // We bake in a 10% buffer to account for the possibility of a price change after the initial delivery but before the return delivery
+        receiverValueForBorrowWithdraw = hub.quoteReturnDelivery(targetChain) * 11/10; 
+        vm.selectFork(fork);
+        // end front-end calculation
     }
 
     function deposit(uint256 amount) internal {
@@ -64,9 +85,11 @@ contract HelloTokensTest is WormholeRelayerTest {
 
         uint256 currentBalance = token.balanceOf(address(this));
 
-        uint256 cost = spoke.quoteWithdraw();
+        uint256 receiverValue = calculateReceiverValueForBorrowWithdrawInFrontEnd();
+        
+        uint256 cost = spoke.quoteWithdraw(receiverValue);
         vm.deal(address(this), cost);
-        spoke.withdraw{value: cost}(address(token), amount);
+        spoke.withdraw{value: cost}(address(token), amount, receiverValue);
         performDelivery();
 
         vm.selectFork(sourceFork);
@@ -82,9 +105,11 @@ contract HelloTokensTest is WormholeRelayerTest {
 
         uint256 currentBalance = token.balanceOf(address(this));
 
-        uint256 cost = spoke.quoteBorrow();
+        uint256 receiverValue = calculateReceiverValueForBorrowWithdrawInFrontEnd();
+
+        uint256 cost = spoke.quoteBorrow(receiverValue);
         vm.deal(address(this), cost);
-        spoke.borrow{value: cost}(address(token), amount);
+        spoke.borrow{value: cost}(address(token), amount, receiverValue);
         performDelivery();
 
         vm.selectFork(sourceFork);
