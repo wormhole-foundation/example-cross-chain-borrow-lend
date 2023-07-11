@@ -2,7 +2,7 @@
 
 This repository contains solidity contracts (Hub.sol and Spoke.sol) that - if the Hub contract is deployed onto one chain and the Spoke contract is deployed onto many chains - form a fully working cross-chain borrow lending application!
 
-caveat: Demo/example purposes only - there are many many things missing from this implementation that would be crucial for a real borrow lending protocol
+caveat: Demo/example purposes only - there are many things missing from this implementation that would be crucial for a real borrow lending protocol
 
 ## Getting Started
 
@@ -15,7 +15,7 @@ Included in this repository is:
 
 ### Environment Setup
 
-- Node 18.9.1 or later, npm 8.19.1 or later: [https://docs.npmjs.com/downloading-and-installing-node-js-and-npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
+- Node 16.14.1 or later, npm 8.5.0 or later: [https://docs.npmjs.com/downloading-and-installing-node-js-and-npm](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm)
 - forge 0.2.0 or later: [https://book.getfoundry.sh/getting-started/installation](https://book.getfoundry.sh/getting-started/installation)
 
 ### Testing Locally
@@ -48,3 +48,4 @@ To test the cross chain borrow lending application, execute the test as such:
 EVM_PRIVATE_KEY=your_wallet_private_key npm run test
 ```
 
+**WARNING**: This repository has not been audited, so it may contain bugs and should be used for example purposes only. If you intend to use or build on this example to perform actual lending, it's highly recommended that you have the final code commit audited by a smart contract auditing firm.
