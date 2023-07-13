@@ -9,7 +9,7 @@ import "wormhole-solidity-sdk/testing/WormholeRelayerTest.sol";
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-contract CrossChainBorrowLendZeroInterestTest is WormholeRelayerTest {
+contract ExampleCrossChainBorrowLendTest is WormholeRelayerTest {
     
     uint16 constant hubChain = 14;
     uint16[] spokeChains = [4, 5, 6];
