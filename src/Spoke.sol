@@ -6,13 +6,8 @@ import "wormhole-solidity-sdk/WormholeRelayerSDK.sol";
 contract Spoke is TokenSender, TokenReceiver {
     uint256 constant GAS_LIMIT = 250_000;
 
-    // This value is larger so that it can fund both actions on Hub chain and the return of the tokens back on this Spoke chain
-    // Relys on the price of '1,500,000 units of Hub chain gas' being enough (depending on the delivery provider's pricing on the hub chain)
-    // to fund GAS_LIMIT units of gas on this source chain 
-    // 
-    // A recommended alternate way of implementing this is
-    // to have this be a parameter in 'borrow' and 'withdraw' that is determined in the front-end 
-    uint256 constant GAS_LIMIT_FOR_WITHDRAWS_AND_BORROWS = 1_500_000; 
+    // This value is larger because a request must be sent back 
+    uint256 constant GAS_LIMIT_FOR_WITHDRAWS_AND_BORROWS = 600_000; 
 
     enum Action {DEPOSIT, WITHDRAW, BORROW, REPAY}
 
@@ -32,8 +27,8 @@ contract Spoke is TokenSender, TokenReceiver {
         cost = deliveryCost + wormhole.messageFee();
     }
 
-    function quoteBorrow() public view returns (uint256 cost) {
-        (cost,) = wormholeRelayer.quoteEVMDeliveryPrice(hubChain, 0, GAS_LIMIT_FOR_WITHDRAWS_AND_BORROWS);
+    function quoteBorrow(uint256 receiverValueForReturnDelivery) public view returns (uint256 cost) {
+        (cost,) = wormholeRelayer.quoteEVMDeliveryPrice(hubChain, receiverValueForReturnDelivery, GAS_LIMIT_FOR_WITHDRAWS_AND_BORROWS);
     }
 
     function quoteRepay() public view returns (uint256 cost) {
@@ -42,8 +37,8 @@ contract Spoke is TokenSender, TokenReceiver {
         cost = deliveryCost + wormhole.messageFee();
     }
 
-    function quoteWithdraw() public view returns (uint256 cost) {
-        (cost,) = wormholeRelayer.quoteEVMDeliveryPrice(hubChain, 0, GAS_LIMIT_FOR_WITHDRAWS_AND_BORROWS);
+    function quoteWithdraw(uint256 receiverValueForReturnDelivery) public view returns (uint256 cost) {
+        (cost,) = wormholeRelayer.quoteEVMDeliveryPrice(hubChain, receiverValueForReturnDelivery, GAS_LIMIT_FOR_WITHDRAWS_AND_BORROWS);
     }
 
     function deposit(address tokenAddress, uint256 amount) public payable {
@@ -51,12 +46,12 @@ contract Spoke is TokenSender, TokenReceiver {
         sendTokenWithPayloadToEvm(hubChain, hubAddress, abi.encode(Action.DEPOSIT, msg.sender), 0, GAS_LIMIT, tokenAddress, amount);
     }
 
-    function withdraw(address tokenAddress, uint256 amount) public payable {
-        wormholeRelayer.sendPayloadToEvm{value: msg.value}(hubChain, hubAddress, abi.encode(Action.WITHDRAW, msg.sender, tokenAddress, amount), 0, GAS_LIMIT_FOR_WITHDRAWS_AND_BORROWS);
+    function withdraw(address tokenAddress, uint256 amount, uint256 receiverValueForReturnDelivery) public payable {
+        wormholeRelayer.sendPayloadToEvm{value: msg.value}(hubChain, hubAddress, abi.encode(Action.WITHDRAW, msg.sender, tokenAddress, amount), receiverValueForReturnDelivery, GAS_LIMIT_FOR_WITHDRAWS_AND_BORROWS);
     }
 
-    function borrow(address tokenAddress, uint256 amount) public payable {
-        wormholeRelayer.sendPayloadToEvm{value: msg.value}(hubChain, hubAddress, abi.encode(Action.BORROW, msg.sender, tokenAddress, amount), 0, GAS_LIMIT_FOR_WITHDRAWS_AND_BORROWS);
+    function borrow(address tokenAddress, uint256 amount, uint256 receiverValueForReturnDelivery) public payable {
+        wormholeRelayer.sendPayloadToEvm{value: msg.value}(hubChain, hubAddress, abi.encode(Action.BORROW, msg.sender, tokenAddress, amount), receiverValueForReturnDelivery, GAS_LIMIT_FOR_WITHDRAWS_AND_BORROWS);
     }
 
     function repay(address tokenAddress, uint256 amount) public payable {

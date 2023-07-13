@@ -18,6 +18,12 @@ contract Hub is TokenSender, TokenReceiver {
         TokenBase(_wormholeRelayer, _tokenBridge, _wormhole)
     {}
 
+    function quoteReturnDelivery(uint16 spokeChain) public view returns (uint256 cost) {
+        uint256 deliveryCost;
+        (deliveryCost,) = wormholeRelayer.quoteEVMDeliveryPrice(spokeChain, 0, GAS_LIMIT);
+        cost = deliveryCost + wormhole.messageFee();
+    }
+
     function receivePayloadAndTokens(
         bytes memory payload,
         TokenReceived[] memory receivedTokens,
@@ -69,6 +75,7 @@ contract Hub is TokenSender, TokenReceiver {
     }
 
     function sendTokenToUser(address user, uint16 sourceChain, bytes32 sourceAddress, address wrappedTokenAddress, uint256 amount) internal {
+        require(msg.value >= quoteReturnDelivery(sourceChain), "Didn't receive enough value for the forward!");
         forwardTokenWithPayloadToEvm(sourceChain, fromWormholeFormat(sourceAddress), abi.encode(user), 0, GAS_LIMIT, msg.value, wrappedTokenAddress, amount);
     }
 }
