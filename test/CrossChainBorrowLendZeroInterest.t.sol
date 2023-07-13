@@ -9,61 +9,80 @@ import "wormhole-solidity-sdk/testing/WormholeRelayerTest.sol";
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 
-contract HelloTokensTest is WormholeRelayerTest {
-    Hub public hub;
-
-    Spoke public spoke;
-
-    ERC20Mock public token;
-
-    function setUpSource() public override {
-        hub = new Hub(
-            address(relayerSource),
-            address(tokenBridgeSource),
-            address(wormholeSource)
-        );
-    }
-
-    function setUpTarget() public override {
-        token = createAndAttestToken(targetFork);
-        spoke = new Spoke(
-            sourceChain, // hub chain id
-            address(hub), // hub address
-            address(relayerTarget),
-            address(tokenBridgeTarget),
-            address(wormholeTarget)
-        );
+contract CrossChainBorrowLendZeroInterestTest is WormholeRelayerTest {
     
-        performRegistrations();        
+    uint16 constant hubChain = 14;
+    uint16[] spokeChains = [4, 5, 6];
+
+    Hub public hub;
+    mapping(uint16 => Spoke) spokes;
+
+    mapping(uint16 => ERC20Mock) public tokens;
+
+    constructor() WormholeRelayerTest() {
+        ChainInfo[] memory chains = new ChainInfo[](4);
+
+        chains[0] = chainInfosTestnet[hubChain];
+
+        for(uint256 i=0; i<spokeChains.length; i++) {
+            chains[i+1] = chainInfosTestnet[spokeChains[i]];
+        }
+
+        setActiveForks(chains);
     }
 
-    function performRegistrations() public {
-        vm.selectFork(targetFork);
-        bytes32 spokeAddress = toWormholeFormat(address(spoke));
-        vm.selectFork(sourceFork);
-        bytes32 hubAddress = toWormholeFormat(address(hub));
-
-        vm.selectFork(targetFork);
-        spoke.setRegisteredSender(sourceChain, hubAddress);
-        vm.selectFork(sourceFork);
-        hub.setRegisteredSender(targetChain, spokeAddress);
+    function selectChain(uint16 chain) public {
+        vm.selectFork(activeForks[chain].fork);
     }
 
-    function calculateReceiverValueForBorrowWithdrawInFrontEnd() public returns (uint256 receiverValueForBorrowWithdraw) {
+    function setUpFork(ActiveFork memory fork) public override {
+
+    }
+
+    function setUpGeneral() public override {
+        selectChain(hubChain);
+        hub = new Hub(
+            address(activeForks[hubChain].relayer),
+            address(activeForks[hubChain].tokenBridge),
+            address(activeForks[hubChain].wormhole)
+        );
+
+        for(uint256 i=0; i<spokeChains.length; i++) {
+            ActiveFork memory fork = activeForks[spokeChains[i]];
+            vm.selectFork(fork.fork);
+            spokes[fork.chainId] = new Spoke(hubChain, address(hub), address(fork.relayer), address(fork.tokenBridge), address(fork.wormhole));
+            tokens[fork.chainId] = createAndAttestToken(fork.chainId);
+        }
+
+        selectChain(hubChain);
+        for(uint256 i=0; i<spokeChains.length; i++) {
+            hub.setRegisteredSender(spokeChains[i], toWormholeFormat(address(spokes[spokeChains[i]])));
+        }
+
+        for(uint256 i=0; i<spokeChains.length; i++) {
+            selectChain(spokeChains[i]);
+            spokes[spokeChains[i]].setRegisteredSender(hubChain, toWormholeFormat(address(hub)));
+        }
+    }
+
+    function calculateReceiverValueForBorrowWithdrawInFrontEnd(uint16 spokeChain) public returns (uint256 receiverValueForBorrowWithdraw) {
         // Front-end calculation for how much receiver value is needed to pay for the return delivery 
         // for a borrow or withdraw
         // to ensure a borrow or withdraw is able to return with tokens!
         uint256 fork = vm.activeFork();
-        vm.selectFork(sourceFork);
+        selectChain(hubChain);
         // We bake in a 10% buffer to account for the possibility of a price change after the initial delivery but before the return delivery
-        receiverValueForBorrowWithdraw = hub.quoteReturnDelivery(targetChain) * 11/10; 
+        receiverValueForBorrowWithdraw = hub.quoteReturnDelivery(spokeChain) * 11/10; 
         vm.selectFork(fork);
         // end front-end calculation
     }
 
-    function deposit(uint256 amount) internal {
+    function deposit(uint16 chain, uint256 amount) internal {
         vm.recordLogs();
-        vm.selectFork(targetFork);
+        selectChain(chain);
+
+        Spoke spoke = spokes[chain];
+        ERC20Mock token = tokens[chain];
 
         token.mint(address(this), amount);
 
@@ -79,49 +98,58 @@ contract HelloTokensTest is WormholeRelayerTest {
         assertEq(token.balanceOf(address(this)), currentBalance - amount, "Tokens not sent for deposit");
     }
 
-    function withdraw(uint256 amount) internal {
+    function withdraw(uint16 chain, uint256 amount) internal {
         vm.recordLogs();
-        vm.selectFork(targetFork);
+        selectChain(chain);
+
+        Spoke spoke = spokes[chain];
+        ERC20Mock token = tokens[chain];
 
         uint256 currentBalance = token.balanceOf(address(this));
 
-        uint256 receiverValue = calculateReceiverValueForBorrowWithdrawInFrontEnd();
+        uint256 receiverValue = calculateReceiverValueForBorrowWithdrawInFrontEnd(chain);
         
         uint256 cost = spoke.quoteWithdraw(receiverValue);
         vm.deal(address(this), cost);
         spoke.withdraw{value: cost}(address(token), amount, receiverValue);
         performDelivery();
 
-        vm.selectFork(sourceFork);
+        selectChain(hubChain);
         performDelivery();
 
-        vm.selectFork(targetFork);
+        selectChain(chain);
         assertEq(token.balanceOf(address(this)), currentBalance + amount, "Tokens not received for withdraw");
     }
 
-    function borrow(uint256 amount) internal {
+    function borrow(uint16 chain, uint256 amount) internal {
         vm.recordLogs();
-        vm.selectFork(targetFork);
+        selectChain(chain);
+
+        Spoke spoke = spokes[chain];
+        ERC20Mock token = tokens[chain];
 
         uint256 currentBalance = token.balanceOf(address(this));
 
-        uint256 receiverValue = calculateReceiverValueForBorrowWithdrawInFrontEnd();
+        uint256 receiverValue = calculateReceiverValueForBorrowWithdrawInFrontEnd(chain);
 
         uint256 cost = spoke.quoteBorrow(receiverValue);
         vm.deal(address(this), cost);
         spoke.borrow{value: cost}(address(token), amount, receiverValue);
         performDelivery();
 
-        vm.selectFork(sourceFork);
+        selectChain(hubChain);
         performDelivery();
 
-        vm.selectFork(targetFork);
+        selectChain(chain);
         assertEq(token.balanceOf(address(this)), currentBalance + amount, "Tokens not received for borrow");
     }
 
-    function repay(uint256 amount) internal {
+    function repay(uint16 chain, uint256 amount) internal {
         vm.recordLogs();
-        vm.selectFork(targetFork);
+        selectChain(chain);
+
+        Spoke spoke = spokes[chain];
+        ERC20Mock token = tokens[chain];
 
         token.mint(address(this), amount);
 
@@ -139,58 +167,66 @@ contract HelloTokensTest is WormholeRelayerTest {
 
     function testDeposit() public {
         // We use multiples of 10**10 because TokenBridge can only send up to 8 decimal places
-        deposit(1 * 10**10);
+        deposit(6, 1 * 10**10);
     }
 
     function testDepositWithdraw() public {
         // We use multiples of 10**10 because TokenBridge can only send up to 8 decimal places
-        deposit(1 * 10**10);
-        withdraw(1 * 10**10);
+        deposit(6, 1 * 10**10);
+        withdraw(6, 1 * 10**10);
     }
 
     function testMultipleDepositWithdraw() public {
-        deposit(1 * 10**10);
-        deposit(2 * 10**10);
-        deposit(5 * 10**10);
-        deposit(7 * 10**10);
-        withdraw(6 * 10**10);
-        withdraw(9 * 10**10);
+        deposit(6, 1 * 10**10);
+        deposit(6, 2 * 10**10);
+        deposit(6, 5 * 10**10);
+        deposit(6, 7 * 10**10);
+        withdraw(6, 6 * 10**10);
+        withdraw(6, 9 * 10**10);
     }
 
     function testBorrow() public {
         // We use multiples of 10**10 because TokenBridge can only send up to 8 decimal places
         vm.prank(address(0x1));
-        deposit(1 * 10**10);
+        deposit(6, 1 * 10**10);
 
-        borrow(1 * 10**10);
+        borrow(6, 1 * 10**10);
     }
 
     function testRepay() public {
         // We use multiples of 10**10 because TokenBridge can only send up to 8 decimal places
         vm.prank(address(0x1));
-        deposit(1 * 10**10);
+        deposit(6, 1 * 10**10);
 
-        borrow(1 * 10**10);
-        repay(1 * 10**10);
+        borrow(6, 1 * 10**10);
+        repay(6, 1 * 10**10);
     }
 
     function testMultipleDepositBorrowRepayWithdraw() public {
         vm.prank(address(0x1));
-        deposit(10 * 10**10);
+        deposit(6, 10 * 10**10);
 
-        borrow(1 * 10**10);
-        borrow(2 * 10**10);
-        repay(1 * 10**10);
-        borrow(7 * 10**10);
-        repay(6 * 10**10);
-        repay(2 * 10**10);
-
-        vm.prank(address(0x1));
-        withdraw(9 * 10**10);
-
-        repay(1 * 10**10);
+        borrow(6, 1 * 10**10);
+        borrow(6, 2 * 10**10);
+        repay(6, 1 * 10**10);
+        borrow(6, 7 * 10**10);
+        repay(6, 6 * 10**10);
+        repay(6, 2 * 10**10);
 
         vm.prank(address(0x1));
-        withdraw(1 * 10**10);
+        withdraw(6, 9 * 10**10);
+
+        repay(6, 1 * 10**10);
+
+        vm.prank(address(0x1));
+        withdraw(6, 1 * 10**10);
+    }
+
+    function testDepositWithdrawMultipleChains() public {
+
+        deposit(6, 10 * 10**10);
+        deposit(4, 9 * 10**10);
+        withdraw(4, 9 * 10**10);
+        withdraw(6, 10 * 10**10);
     }
 }
