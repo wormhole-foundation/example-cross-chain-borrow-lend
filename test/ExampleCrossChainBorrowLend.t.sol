@@ -11,7 +11,10 @@ import "forge-std/console.sol";
 
 contract ExampleCrossChainBorrowLendTest is WormholeRelayerTest {
     
+    // Hub chain is Celo Testnet
     uint16 constant hubChain = 14;
+
+    // Spoke chains are BSC, Polygon, and Avalanche Testnets
     uint16[] spokeChains = [4, 5, 6];
 
     Hub public hub;
