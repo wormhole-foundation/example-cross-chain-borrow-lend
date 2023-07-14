@@ -11,6 +11,9 @@ contract Hub is TokenSender, TokenReceiver {
     // user => wrapped token address => amount 
     mapping(address => mapping(address => uint256)) public vaultDeposits;
 
+    // user => wrapped token address => amount 
+    mapping(address => mapping(address => uint256)) public vaultBorrows;
+
     constructor(address _wormholeRelayer, address _tokenBridge, address _wormhole)
         TokenBase(_wormholeRelayer, _tokenBridge, _wormhole)
     {}
@@ -27,13 +30,10 @@ contract Hub is TokenSender, TokenReceiver {
             
             address tokenAddressOnThisChain = getTokenAddressOnThisChain(sourceChain, toWormholeFormat(tokenHomeAddress));
 
-            if(action == Action.WITHDRAW) {
+            if(action == Action.BORROW || action == Action.WITHDRAW) {
                 if(updateHubState(action, user, tokenAddressOnThisChain, amount)) {
                     sendTokenToUser(user, sourceChain, sourceAddress, tokenAddressOnThisChain, amount);
                 }
-            }
-            else if(action == Action.BORROW) {
-                // implement this!
             }
 
 
@@ -42,10 +42,8 @@ contract Hub is TokenSender, TokenReceiver {
 
             (Action action, address user) = abi.decode(payload, (Action, address));
 
-            if(action == Action.DEPOSIT) {
+            if(action == Action.DEPOSIT || action == Action.REPAY) {
                 updateHubState(action, user, receivedToken.tokenAddress, receivedToken.amount);
-            } else if(action == Action.REPAY) {
-                // implement this!
             }
         }
     }
@@ -59,9 +57,15 @@ contract Hub is TokenSender, TokenReceiver {
             if(currentHubBalance < amount) return false;
             vaultDeposits[user][wrappedTokenAddress] -= amount;
         } else if(action == Action.BORROW) {
-            // implement this!
+            if(currentHubBalance < amount) return false;
+            vaultBorrows[user][wrappedTokenAddress] += amount;
         } else if(action == Action.REPAY) {
-            // implement this!
+            if(vaultBorrows[user][wrappedTokenAddress] < amount) {
+                vaultDeposits[user][wrappedTokenAddress] += amount - vaultBorrows[user][wrappedTokenAddress];
+                vaultBorrows[user][wrappedTokenAddress] = 0;
+            } else {
+                vaultBorrows[user][wrappedTokenAddress] -= amount;
+            }
         }
         return true;
     }
