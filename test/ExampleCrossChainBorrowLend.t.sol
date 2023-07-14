@@ -110,6 +110,48 @@ contract ExampleCrossChainBorrowLendTest is WormholeRelayerTest {
         assertEq(token.balanceOf(address(this)), currentBalance + amount, "Tokens not received for withdraw");
     }
 
+    function borrow(uint16 chain, uint256 amount) internal {
+        vm.recordLogs();
+        selectChain(chain);
+
+        Spoke spoke = spokes[chain];
+        ERC20Mock token = tokens[chain];
+
+        uint256 currentBalance = token.balanceOf(address(this));
+
+        uint256 cost = spoke.quoteBorrow();
+        vm.deal(address(this), cost);
+        spoke.borrow{value: cost}(address(token), amount);
+        performDelivery();
+
+        selectChain(hubChain);
+        performDelivery();
+
+        selectChain(chain);
+        assertEq(token.balanceOf(address(this)), currentBalance + amount, "Tokens not received for borrow");
+    }
+
+    function repay(uint16 chain, uint256 amount) internal {
+        vm.recordLogs();
+        selectChain(chain);
+
+        Spoke spoke = spokes[chain];
+        ERC20Mock token = tokens[chain];
+
+        token.mint(address(this), amount);
+
+        uint256 currentBalance = token.balanceOf(address(this));
+
+        token.approve(address(spoke), amount);
+
+        uint256 cost = spoke.quoteRepay();
+        vm.deal(address(this), cost);
+        spoke.repay{value: cost}(address(token), amount);
+        performDelivery();
+
+        assertEq(token.balanceOf(address(this)), currentBalance - amount, "Tokens not sent for repay");
+    }
+
 
     function testDeposit() public {
         // We use multiples of 10**10 because TokenBridge can only send up to 8 decimal places
@@ -138,4 +180,42 @@ contract ExampleCrossChainBorrowLendTest is WormholeRelayerTest {
         withdraw(4, 9 * 10**10);
         withdraw(6, 10 * 10**10);
     }
+
+    function testBorrow() public {
+        // We use multiples of 10**10 because TokenBridge can only send up to 8 decimal places
+        vm.prank(address(0x1));
+        deposit(6, 1 * 10**10);
+
+        borrow(6, 1 * 10**10);
+    }
+
+    function testRepay() public {
+        // We use multiples of 10**10 because TokenBridge can only send up to 8 decimal places
+        vm.prank(address(0x1));
+        deposit(6, 1 * 10**10);
+
+        borrow(6, 1 * 10**10);
+        repay(6, 1 * 10**10);
+    }
+
+    function testMultipleDepositBorrowRepayWithdraw() public {
+        vm.prank(address(0x1));
+        deposit(6, 10 * 10**10);
+
+        borrow(6, 1 * 10**10);
+        borrow(6, 2 * 10**10);
+        repay(6, 1 * 10**10);
+        borrow(6, 7 * 10**10);
+        repay(6, 6 * 10**10);
+        repay(6, 2 * 10**10);
+
+        vm.prank(address(0x1));
+        withdraw(6, 9 * 10**10);
+
+        repay(6, 1 * 10**10);
+
+        vm.prank(address(0x1));
+        withdraw(6, 1 * 10**10);
+    }
+
 }
