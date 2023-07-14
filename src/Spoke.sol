@@ -7,9 +7,12 @@ contract Spoke is TokenSender, TokenReceiver {
     uint256 constant GAS_LIMIT = 250_000;
 
     // This value is larger because a request must be sent back 
-    uint256 constant GAS_LIMIT_FOR_WITHDRAWS = 600_000; 
+    uint256 constant GAS_LIMIT_FOR_WITHDRAWS = 300_000; 
 
     // Amount that is used to pay for the withdraw delivery on the Hub
+    // Hardcoded to something large, for simplicity / demo purposes
+    // We recommend the practice of exposing this on the 'withdraw'/'quoteWithdraw' endpoints 
+    // and calculating this in the front-end
     uint256 constant RECEIVER_VALUE_FOR_WITHDRAWS = 100_000_000_000_000_000;
 
     enum Action {DEPOSIT, WITHDRAW, BORROW, REPAY}

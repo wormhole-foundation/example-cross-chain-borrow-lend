@@ -56,6 +56,6 @@ contract Hub is TokenSender, TokenReceiver {
     }
 
     function sendTokenToUser(address user, uint16 sourceChain, bytes32 sourceAddress, address wrappedTokenAddress, uint256 amount) internal {
-        forwardTokenWithPayloadToEvm(sourceChain, fromWormholeFormat(sourceAddress), abi.encode(user), 0, GAS_LIMIT, msg.value, wrappedTokenAddress, amount);
+        sendTokenWithPayloadToEvm(sourceChain, fromWormholeFormat(sourceAddress), abi.encode(user), 0, GAS_LIMIT, wrappedTokenAddress, amount);
     }
 }
