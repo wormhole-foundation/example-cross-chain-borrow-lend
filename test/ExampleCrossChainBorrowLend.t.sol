@@ -68,18 +68,6 @@ contract ExampleCrossChainBorrowLendTest is WormholeRelayerTest {
         }
     }
 
-    function calculateReceiverValueForBorrowWithdrawInFrontEnd(uint16 spokeChain) public returns (uint256 receiverValueForBorrowWithdraw) {
-        // Front-end calculation for how much receiver value is needed to pay for the return delivery 
-        // for a borrow or withdraw
-        // to ensure a borrow or withdraw is able to return with tokens!
-        uint256 fork = vm.activeFork();
-        selectChain(hubChain);
-        // We bake in a 10% buffer to account for the possibility of a price change after the initial delivery but before the return delivery
-        receiverValueForBorrowWithdraw = hub.quoteReturnDelivery(spokeChain) * 11/10; 
-        vm.selectFork(fork);
-        // end front-end calculation
-    }
-
     function deposit(uint16 chain, uint256 amount) internal {
         vm.recordLogs();
         selectChain(chain);
@@ -109,12 +97,10 @@ contract ExampleCrossChainBorrowLendTest is WormholeRelayerTest {
         ERC20Mock token = tokens[chain];
 
         uint256 currentBalance = token.balanceOf(address(this));
-
-        uint256 receiverValue = calculateReceiverValueForBorrowWithdrawInFrontEnd(chain);
         
-        uint256 cost = spoke.quoteWithdraw(receiverValue);
+        uint256 cost = spoke.quoteWithdraw();
         vm.deal(address(this), cost);
-        spoke.withdraw{value: cost}(address(token), amount, receiverValue);
+        spoke.withdraw{value: cost}(address(token), amount);
         performDelivery();
 
         selectChain(hubChain);
@@ -124,49 +110,6 @@ contract ExampleCrossChainBorrowLendTest is WormholeRelayerTest {
         assertEq(token.balanceOf(address(this)), currentBalance + amount, "Tokens not received for withdraw");
     }
 
-    function borrow(uint16 chain, uint256 amount) internal {
-        vm.recordLogs();
-        selectChain(chain);
-
-        Spoke spoke = spokes[chain];
-        ERC20Mock token = tokens[chain];
-
-        uint256 currentBalance = token.balanceOf(address(this));
-
-        uint256 receiverValue = calculateReceiverValueForBorrowWithdrawInFrontEnd(chain);
-
-        uint256 cost = spoke.quoteBorrow(receiverValue);
-        vm.deal(address(this), cost);
-        spoke.borrow{value: cost}(address(token), amount, receiverValue);
-        performDelivery();
-
-        selectChain(hubChain);
-        performDelivery();
-
-        selectChain(chain);
-        assertEq(token.balanceOf(address(this)), currentBalance + amount, "Tokens not received for borrow");
-    }
-
-    function repay(uint16 chain, uint256 amount) internal {
-        vm.recordLogs();
-        selectChain(chain);
-
-        Spoke spoke = spokes[chain];
-        ERC20Mock token = tokens[chain];
-
-        token.mint(address(this), amount);
-
-        uint256 currentBalance = token.balanceOf(address(this));
-
-        token.approve(address(spoke), amount);
-
-        uint256 cost = spoke.quoteRepay();
-        vm.deal(address(this), cost);
-        spoke.repay{value: cost}(address(token), amount);
-        performDelivery();
-
-        assertEq(token.balanceOf(address(this)), currentBalance - amount, "Tokens not sent for repay");
-    }
 
     function testDeposit() public {
         // We use multiples of 10**10 because TokenBridge can only send up to 8 decimal places
@@ -186,43 +129,6 @@ contract ExampleCrossChainBorrowLendTest is WormholeRelayerTest {
         deposit(6, 7 * 10**10);
         withdraw(6, 6 * 10**10);
         withdraw(6, 9 * 10**10);
-    }
-
-    function testBorrow() public {
-        // We use multiples of 10**10 because TokenBridge can only send up to 8 decimal places
-        vm.prank(address(0x1));
-        deposit(6, 1 * 10**10);
-
-        borrow(6, 1 * 10**10);
-    }
-
-    function testRepay() public {
-        // We use multiples of 10**10 because TokenBridge can only send up to 8 decimal places
-        vm.prank(address(0x1));
-        deposit(6, 1 * 10**10);
-
-        borrow(6, 1 * 10**10);
-        repay(6, 1 * 10**10);
-    }
-
-    function testMultipleDepositBorrowRepayWithdraw() public {
-        vm.prank(address(0x1));
-        deposit(6, 10 * 10**10);
-
-        borrow(6, 1 * 10**10);
-        borrow(6, 2 * 10**10);
-        repay(6, 1 * 10**10);
-        borrow(6, 7 * 10**10);
-        repay(6, 6 * 10**10);
-        repay(6, 2 * 10**10);
-
-        vm.prank(address(0x1));
-        withdraw(6, 9 * 10**10);
-
-        repay(6, 1 * 10**10);
-
-        vm.prank(address(0x1));
-        withdraw(6, 1 * 10**10);
     }
 
     function testDepositWithdrawMultipleChains() public {
