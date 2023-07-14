@@ -7,7 +7,7 @@ contract Spoke is TokenSender, TokenReceiver {
     uint256 constant GAS_LIMIT = 250_000;
 
     // This value is larger because a request must be sent back 
-    uint256 constant GAS_LIMIT_FOR_WITHDRAWS_AND_BORROWS = 600_000; 
+    uint256 constant GAS_LIMIT_FOR_WITHDRAWS_AND_BORROWS = 300_000; 
 
     enum Action {DEPOSIT, WITHDRAW, BORROW, REPAY}
 
