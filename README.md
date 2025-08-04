@@ -1,3 +1,5 @@
+⚠️**Important**: While this code is not being actively maintained, it can still serve as a good reference for building a multichain borrow/lend application.
+
 # Building A Cross-Chain Borrow Lend Application
 
 This repository contains solidity contracts (Hub.sol and Spoke.sol) that - if the Hub contract is deployed onto one chain and the Spoke contract is deployed onto many chains - form a fully working cross-chain borrow lending application!
